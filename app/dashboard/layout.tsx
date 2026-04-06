@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ReactNode } from "react";
+import { signOut } from "@/auth";
 
 const menuItems = [
   { label: "대시보드", href: "/dashboard" },
@@ -21,9 +22,7 @@ export default function DashboardLayout({
         <aside className="hidden w-64 border-r border-slate-200 bg-white p-6 lg:block">
           <Link href="/" className="block">
             <p className="text-sm font-semibold text-slate-500">PKI Service</p>
-            <h1 className="mt-1 text-xl font-bold text-slate-900">
-              Dashboard
-            </h1>
+            <h1 className="mt-1 text-xl font-bold text-slate-900">Dashboard</h1>
           </Link>
 
           <nav className="mt-8 space-y-2">
@@ -41,7 +40,7 @@ export default function DashboardLayout({
 
         <div className="flex-1">
           <header className="border-b border-slate-200 bg-white px-6 py-4">
-            <div className="mx-auto flex max-w-6xl items-center justify-between">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-slate-500">Certificate Auth Service</p>
                 <p className="text-lg font-semibold text-slate-900">
@@ -49,12 +48,19 @@ export default function DashboardLayout({
                 </p>
               </div>
 
-              <Link
-                href="/login"
-                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-100"
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/" });
+                }}
               >
-                로그인
-              </Link>
+                <button
+                  type="submit"
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-100"
+                >
+                  로그아웃
+                </button>
+              </form>
             </div>
           </header>
 
