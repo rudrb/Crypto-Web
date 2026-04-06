@@ -30,6 +30,7 @@ export default function CertIssuePage() {
       setIsLoading(true);
       setResultMessage("");
       setCertificatePem("");
+      setPublicKeyPem("");
 
       const { publicKeyPem, privateKeyPem } = await generateRsaKeyPairPem();
       setPublicKeyPem(publicKeyPem);
@@ -57,7 +58,9 @@ export default function CertIssuePage() {
 
       if (!res.ok || !data?.ok || !data.certificate) {
         throw new Error(
-          data?.message || data?.error || `인증서 발급 실패 (status=${res.status})`
+          [data?.message, data?.error, `status=${res.status}`]
+            .filter(Boolean)
+            .join(" / ")
         );
       }
 

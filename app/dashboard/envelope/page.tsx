@@ -1,58 +1,144 @@
-export default function CertIssuePage() {
+"use client";
+
+import { useState } from "react";
+import { loadPrivateKey } from "@/lib/storage/local-private-key";
+import { signMessageWithPrivateKeyPem } from "@/lib/client/sign";
+
+type SendResponse = {
+  ok: boolean;
+  envelope?: {
+    id: string;
+    subject: string | null;
+    status: string;
+    createdAt: string;
+  };
+  message?: string;
+  error?: string;
+};
+
+export default function EnvelopePage() {
+  const [receiverEmail, setReceiverEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [plaintext, setPlaintext] = useState("");
+  const [resultMessage, setResultMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async () => {
+    try {
+      setIsLoading(true);
+      setResultMessage("");
+
+      const privateKeyPem = loadPrivateKey();
+
+      if (!privateKeyPem) {
+        throw new Error("브라우저에 저장된 개인키가 없습니다. 먼저 인증서를 발급하세요.");
+      }
+
+      if (!receiverEmail.trim()) {
+        throw new Error("수신자 이메일을 입력하세요.");
+      }
+
+      if (!plaintext.trim()) {
+        throw new Error("메시지 내용을 입력하세요.");
+      }
+
+      const signatureBase64 = await signMessageWithPrivateKeyPem(
+        privateKeyPem,
+        plaintext
+      );
+
+      const res = await fetch("/api/envelope/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          receiverEmail: receiverEmail.trim(),
+          subject: subject.trim() || undefined,
+          plaintext,
+          signatureBase64,
+        }),
+      });
+
+      const data = (await res.json()) as SendResponse;
+
+      if (!res.ok || !data.ok || !data.envelope) {
+        throw new Error(
+          [data.message, data.error, `status=${res.status}`]
+            .filter(Boolean)
+            .join(" / ")
+        );
+      }
+
+      setResultMessage(
+        `전자봉투 전송 성공 / id=${data.envelope.id} / status=${data.envelope.status}`
+      );
+      setSubject("");
+      setPlaintext("");
+    } catch (error) {
+      setResultMessage(
+        error instanceof Error ? error.message : "알 수 없는 오류"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-slate-900">인증서 발급</h1>
-      <p className="mt-2 text-slate-600">
-        클라이언트에서 키쌍을 생성하고 공개키를 서버에 제출해 인증서를
-        발급받습니다.
-      </p>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">Step 1</p>
-          <h2 className="mt-2 text-xl font-semibold text-slate-900">
-            키쌍 생성
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            브라우저에서 개인키/공개키를 생성합니다. 개인키는 로컬 저장소에
-            보관하고, 공개키만 서버에 전송합니다.
-          </p>
-
-          <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-            키쌍 생성 버튼 UI 예정
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">Step 2</p>
-          <h2 className="mt-2 text-xl font-semibold text-slate-900">
-            인증서 발급 요청
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            공개키를 제출하면 서버가 CA 개인키로 사용자 인증서를 발급하고 DB에
-            저장합니다.
-          </p>
-
-          <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-            인증서 발급 요청 폼 예정
-          </div>
-        </section>
-      </div>
-
-      <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">인증서 결과</h2>
+    <main className="space-y-6">
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h1 className="text-2xl font-bold">전자봉투 전송</h1>
         <p className="mt-2 text-sm text-slate-600">
-          발급 성공 시 PEM 형식 인증서와 상태 정보가 표시됩니다.
+          평문에 전자서명을 붙이고, 수신자 공개키로 암호화하여 서버에 저장합니다.
         </p>
 
-        <div className="mt-4 rounded-xl bg-slate-950 p-4 text-sm text-slate-200">
-          -----BEGIN CERTIFICATE-----
-          <br />
-          발급 후 인증서 내용 표시 예정
-          <br />
-          -----END CERTIFICATE-----
+        <div className="mt-6 grid gap-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium">수신자 이메일</label>
+            <input
+              value={receiverEmail}
+              onChange={(e) => setReceiverEmail(e.target.value)}
+              placeholder="receiver@example.com"
+              className="w-full rounded-xl border px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">제목</label>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="메시지 제목"
+              className="w-full rounded-xl border px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">평문</label>
+            <textarea
+              value={plaintext}
+              onChange={(e) => setPlaintext(e.target.value)}
+              placeholder="보낼 메시지 내용"
+              className="min-h-45 w-full rounded-xl border p-3 text-sm"
+            />
+          </div>
         </div>
+
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={isLoading}
+            className="rounded-xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
+          >
+            {isLoading ? "전송 중..." : "전자봉투 전송"}
+          </button>
+        </div>
+
+        {resultMessage ? (
+          <p className="mt-4 text-sm text-slate-700">{resultMessage}</p>
+        ) : null}
       </section>
-    </div>
+    </main>
   );
 }

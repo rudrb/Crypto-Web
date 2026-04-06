@@ -15,9 +15,12 @@ export function encryptEnvelope(receiverPublicKeyPem: string, plaintext: string)
   }
 
   const receiverPublicKey = forge.pki.publicKeyFromPem(receiverPublicKeyPem);
+
   const encryptedKey = receiverPublicKey.encrypt(aesKey, "RSA-OAEP", {
     md: forge.md.sha256.create(),
-    mgf1: { md: forge.md.sha1.create() },
+    mgf1: {
+      md: forge.md.sha256.create(),
+    },
   });
 
   return {

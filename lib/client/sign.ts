@@ -25,7 +25,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return window.btoa(binary);
 }
 
-export async function importPrivateKeyFromPem(privateKeyPem: string) {
+async function importPrivateKeyFromPem(privateKeyPem: string) {
   const keyData = pemToArrayBuffer(privateKeyPem);
 
   return window.crypto.subtle.importKey(
@@ -48,9 +48,7 @@ export async function signMessageWithPrivateKeyPem(
   const encoded = new TextEncoder().encode(message);
 
   const signature = await window.crypto.subtle.sign(
-    {
-      name: "RSASSA-PKCS1-v1_5",
-    },
+    { name: "RSASSA-PKCS1-v1_5" },
     privateKey,
     encoded
   );
