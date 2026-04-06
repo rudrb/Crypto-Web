@@ -2,17 +2,15 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
-export const runtime = "nodejs";
+export const GET = auth(async function GET(req) {
+  const user = req.auth?.user;
 
-export async function GET() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
     include: {
       certificates: {
         where: { status: "ACTIVE" },
@@ -28,15 +26,15 @@ export async function GET() {
     },
   });
 
-  if (!user) {
+  if (!dbUser) {
     return NextResponse.json({ message: "User not found" }, { status: 404 });
   }
 
   return NextResponse.json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    image: user.image,
-    activeCertificates: user.certificates,
+    id: dbUser.id,
+    name: dbUser.name,
+    email: dbUser.email,
+    image: dbUser.image,
+    activeCertificates: dbUser.certificates,
   });
-}
+});

@@ -1,10 +1,9 @@
 import "server-only";
 import forge from "node-forge";
+import crypto from "node:crypto";
 
 function randomSerialNumber() {
-  return Array.from(crypto.getRandomValues(new Uint8Array(12)))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return crypto.randomBytes(12).toString("hex");
 }
 
 export function issueCertificate(params: {

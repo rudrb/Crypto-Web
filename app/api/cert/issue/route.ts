@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { issueCertificate } from "@/lib/forge/certificate";
 
 export const runtime = "nodejs";
 
@@ -10,11 +9,15 @@ const bodySchema = z.object({
   publicKeyPem: z.string().min(1),
 });
 
-export async function POST(req: Request) {
-  try {
-    const session = await auth();
+function normalizePem(value?: string) {
+  return value?.replace(/\\n/g, "\n").trim() ?? "";
+}
 
-    if (!session?.user?.id || !session.user.email) {
+export const POST = auth(async function POST(req) {
+  try {
+    const authUser = req.auth?.user;
+
+    if (!authUser?.email) {
       return NextResponse.json(
         { ok: false, message: "Unauthorized" },
         { status: 401 }
@@ -35,8 +38,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const caCertPem = process.env.CA_CERT_PEM;
-    const caPrivateKeyPem = process.env.CA_PRIVATE_KEY_PEM;
+    const caCertPem = normalizePem(process.env.CA_CERT_PEM);
+    const caPrivateKeyPem = normalizePem(process.env.CA_PRIVATE_KEY_PEM);
 
     if (!caCertPem || !caPrivateKeyPem) {
       return NextResponse.json(
@@ -48,18 +51,33 @@ export async function POST(req: Request) {
       );
     }
 
+    const { issueCertificate } = await import("@/lib/forge/certificate");
+
     const issued = issueCertificate({
-      userEmail: session.user.email,
-      userName: session.user.name,
+      userEmail: authUser.email,
+      userName: authUser.name,
       publicKeyPem: parsed.data.publicKeyPem,
       caCertPem,
       caPrivateKeyPem,
       days: 365,
     });
 
+    const dbUser = await prisma.user.upsert({
+      where: { email: authUser.email },
+      update: {
+        name: authUser.name ?? undefined,
+        image: authUser.image ?? undefined,
+      },
+      create: {
+        email: authUser.email,
+        name: authUser.name ?? null,
+        image: authUser.image ?? null,
+      },
+    });
+
     const certificate = await prisma.certificate.create({
       data: {
-        userId: session.user.id,
+        userId: dbUser.id,
         serialNumber: issued.serialNumber,
         publicKeyPem: parsed.data.publicKeyPem,
         certificatePem: issued.certificatePem,
@@ -92,4 +110,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});
