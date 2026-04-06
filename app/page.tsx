@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth, signOut } from "@/auth";
 
 const features = [
   {
@@ -27,7 +28,10 @@ const features = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
+
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-16">
       <div className="mx-auto max-w-6xl">
@@ -45,20 +49,50 @@ export default function HomePage() {
             제공하는 공개키 기반 보안 웹 서비스입니다.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/login"
-              className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800"
-            >
-              로그인 시작
-            </Link>
-            <Link
-              href="/dashboard"
-              className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-900 hover:bg-slate-100"
-            >
-              대시보드 보기
-            </Link>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            {!isLoggedIn ? (
+              <Link
+                href="/login"
+                className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                로그인 시작
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                  대시보드 이동
+                </Link>
+
+                <form
+                  action={async () => {
+                    "use server";
+                    await signOut({ redirectTo: "/" });
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-900 hover:bg-slate-100"
+                  >
+                    로그아웃
+                  </button>
+                </form>
+              </>
+            )}
           </div>
+
+          {isLoggedIn && (
+            <div className="mt-6 rounded-2xl bg-slate-50 p-4">
+              <p className="text-sm font-medium text-slate-900">
+                현재 로그인 사용자
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                {session.user?.name ?? "사용자"} / {session.user?.email ?? "이메일 없음"}
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
