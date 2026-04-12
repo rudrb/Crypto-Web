@@ -311,7 +311,7 @@ export default function CertManagePage() {
           <textarea
             value={localCert}
             readOnly
-            className="mt-4 min-h-[240px] w-full rounded-xl border p-3 text-xs"
+            className="mt-4 min-h-60 w-full rounded-xl border p-3 text-xs"
           />
         ) : null}
 

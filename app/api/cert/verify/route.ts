@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { verifyCertificate } from "@/lib/forge/ca";
 import fs from "fs/promises";
 import path from "path";

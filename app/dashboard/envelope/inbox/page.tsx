@@ -208,7 +208,7 @@ export default function EnvelopeInboxPage() {
         <textarea
           value={decryptedMessage}
           readOnly
-          className="mt-4 min-h-[220px] w-full rounded-xl border p-3 text-sm"
+          className="mt-4 min-h-55 w-full rounded-xl border p-3 text-sm"
         />
       </section>
     </main>
