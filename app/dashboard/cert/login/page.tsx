@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { loadPrivateKey } from "@/lib/storage/local-private-key";
 import { signMessageWithPrivateKeyPem } from "@/lib/client/sign";
 
@@ -41,13 +41,27 @@ export default function CertLoginPage() {
   const [signatureBase64, setSignatureBase64] = useState("");
   const [resultMessage, setResultMessage] = useState("");
 
+  const hasPrivateKey = useMemo(() => {
+    return !!loadPrivateKey();
+  }, []);
+
+  const isExpired = useMemo(() => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt).getTime() <= Date.now();
+  }, [expiresAt]);
+
+  const resetChallengeState = () => {
+    setChallengeId("");
+    setChallenge("");
+    setExpiresAt("");
+    setSignatureBase64("");
+  };
+
   const requestChallenge = async () => {
     try {
       setIsLoading(true);
       setResultMessage("");
-      setChallenge("");
-      setChallengeId("");
-      setSignatureBase64("");
+      resetChallengeState();
 
       const res = await fetch("/api/sign-login/challenge", {
         method: "POST",
@@ -93,6 +107,11 @@ export default function CertLoginPage() {
         throw new Error("먼저 challenge를 발급받아야 합니다.");
       }
 
+      if (isExpired) {
+        resetChallengeState();
+        throw new Error("Challenge expired / 다시 발급받아야 합니다.");
+      }
+
       const signature = await signMessageWithPrivateKeyPem(
         privateKeyPem,
         challenge
@@ -122,6 +141,11 @@ export default function CertLoginPage() {
         throw new Error("서명값이 없습니다. 먼저 서명하세요.");
       }
 
+      if (isExpired) {
+        resetChallengeState();
+        throw new Error("Challenge expired / 다시 발급받아야 합니다.");
+      }
+
       const res = await fetch("/api/sign-login/verify", {
         method: "POST",
         headers: {
@@ -136,11 +160,15 @@ export default function CertLoginPage() {
       const data = (await res.json()) as VerifyResponse;
 
       if (!res.ok || !data.ok || !data.verified) {
-        throw new Error(
-          [data.message, data.error, `status=${res.status}`]
-            .filter(Boolean)
-            .join(" / ")
-        );
+        const errorMessage = [data.message, data.error, `status=${res.status}`]
+          .filter(Boolean)
+          .join(" / ");
+
+        if (res.status === 400 && data.message?.toLowerCase().includes("expired")) {
+          resetChallengeState();
+        }
+
+        throw new Error(errorMessage);
       }
 
       setResultMessage(
@@ -165,6 +193,15 @@ export default function CertLoginPage() {
           서버가 challenge를 발급하고, 브라우저의 개인키로 서명한 뒤 서버가 공개키로 검증합니다.
         </p>
 
+        <div className="mt-4 rounded-xl border p-4 text-sm">
+          <p>
+            개인키 저장 상태:{" "}
+            <span className={hasPrivateKey ? "font-semibold" : "font-semibold text-red-600"}>
+              {hasPrivateKey ? "있음" : "없음"}
+            </span>
+          </p>
+        </div>
+
         <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
@@ -178,7 +215,7 @@ export default function CertLoginPage() {
           <button
             type="button"
             onClick={signChallenge}
-            disabled={isLoading}
+            disabled={isLoading || !challenge || isExpired}
             className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50"
           >
             2. Challenge 서명
@@ -187,7 +224,7 @@ export default function CertLoginPage() {
           <button
             type="button"
             onClick={verifySignature}
-            disabled={isLoading}
+            disabled={isLoading || !signatureBase64 || isExpired}
             className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50"
           >
             3. 서명 검증
@@ -201,11 +238,19 @@ export default function CertLoginPage() {
 
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Challenge</h2>
+
         {expiresAt ? (
           <p className="mt-2 text-xs text-slate-500">
             만료 시각: {new Date(expiresAt).toLocaleString()}
           </p>
         ) : null}
+
+        {isExpired ? (
+          <p className="mt-2 text-sm text-red-600">
+            이 challenge는 만료되었습니다. 다시 발급받아야 합니다.
+          </p>
+        ) : null}
+
         <textarea
           value={challenge}
           readOnly
