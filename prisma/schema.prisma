@@ -3,22 +3,23 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id              String           @id @default(cuid())
-  name            String?
-  email           String?          @unique
-  image           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                String           @id @default(cuid())
+  name              String?
+  email             String?          @unique
+  image             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  certificates    Certificate[]
-  loginChallenges LoginChallenge[]
-  sentEnvelopes   Envelope[]       @relation("EnvelopeSender")
-  receivedEnvelopes Envelope[]     @relation("EnvelopeReceiver")
+  certificates      Certificate[]
+  loginChallenges   LoginChallenge[]
+  sentEnvelopes     Envelope[]       @relation("EnvelopeSender")
+  receivedEnvelopes Envelope[]       @relation("EnvelopeReceiver")
 }
 
 model Certificate {
@@ -55,19 +56,19 @@ model LoginChallenge {
 }
 
 model Envelope {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   senderId     String
   receiverId   String
   subject      String?
   ciphertext   String
   encryptedKey String
   signature    String?
-  status       String   @default("UNREAD")
-  createdAt    DateTime @default(now())
+  status       String    @default("UNREAD")
+  createdAt    DateTime  @default(now())
   readAt       DateTime?
 
-  sender       User     @relation("EnvelopeSender", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver     User     @relation("EnvelopeReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender       User      @relation("EnvelopeSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver     User      @relation("EnvelopeReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@index([senderId])
   @@index([receiverId, status])
