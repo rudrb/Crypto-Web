@@ -1,29 +1,33 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "database",
-  },
-  pages: {
-    signIn: "/login",
-  },
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
+
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-      }
-      return session;
+    async signIn({ user }) {
+      if (!user.email) return false;
+
+      await prisma.user.upsert({
+        where: { email: user.email },
+        update: {
+          name: user.name ?? null,
+          image: user.image ?? null,
+        },
+        create: {
+          email: user.email,
+          name: user.name ?? null,
+          image: user.image ?? null,
+        },
+      });
+
+      return true;
     },
   },
 });
