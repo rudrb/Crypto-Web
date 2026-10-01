@@ -305,7 +305,6 @@ http://localhost:3000 에서 확인할 수 있습니다.
 
 ## 팀
 
-<!-- TODO: 팀원과 담당 파트를 채워 주세요 -->
-
 | 이름 | GitHub | 담당 |
-| | [rudrb](https://github.com/rudrb) | 기획 및 코드 작성|
+
+| 최경규 | [rudrb](https://github.com/rudrb) | 기획 및 코드 작성|
